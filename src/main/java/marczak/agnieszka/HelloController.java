@@ -1,5 +1,6 @@
 package marczak.agnieszka;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -38,8 +40,6 @@ public class HelloController {
         intermediate.add("15.834796414737399,51.73793284903263");
         intermediate.add("14.82069,52.44000");
         // end: intermediate.add("14.944330677563961,52.55699603953345");
-        ObjectMapper objectMapper = new ObjectMapper(); // główny obiekt biblioteki object mapper - tak mozemy recznie budowac jsony
-
         System.out.println(apiKey);
         System.out.println(from);
         System.out.println(to);
@@ -65,7 +65,21 @@ public class HelloController {
         //Jackson - serializuje jsony
         //działa na zasadzie refleksji
         ResponseEntity<String> responseEntity = restTemplate.exchange(OPTIMIZATION_URL, HttpMethod.POST, entity, String.class);
-        return responseEntity.getBody();
+        String jsonResponse = responseEntity.getBody();
+        ObjectMapper objectMapper = new ObjectMapper(); // główny obiekt biblioteki object mapper - tak mozemy recznie budowac jsony
+        try {
+            JsonNode rootNode = objectMapper.readTree(jsonResponse);
+            JsonNode stepsNode = rootNode.path("routes").path("steps");
+            List<Integer> jobIds = new ArrayList<>();
+            for (JsonNode step : stepsNode) {
+                if (step.has("id")){
+                    jobIds.add(step.get("id").intValue());
+                }
+            }
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        return null;
     }
 
     private double[] mapToCoordinates(String textCoordinates) {
