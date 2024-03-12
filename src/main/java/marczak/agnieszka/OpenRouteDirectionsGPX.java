@@ -3,19 +3,19 @@ package marczak.agnieszka;
 import java.util.ArrayList;
 import java.util.List;
 
-public class OpenRouteRequest {
-    private List<String[]> coordinates = new ArrayList<>();
+public class OpenRouteDirectionsGPX {
+    private List<double[]> coordinates = new ArrayList<>();
 
     //wymagany przez bibliotekę Jackson
-    public OpenRouteRequest() {
+    public OpenRouteDirectionsGPX() {
     }
 
-    public void addCoordinate(String coordinate){
-        coordinates.add(coordinate.split(","));
+    public void addCoordinate(double[] coordinate){
+        coordinates.add(coordinate);
     }
 
     //gettery wymagane do mapowania na jsony przez Jackson
-    public List<String[]> getCoordinates() {
+    public List<double[]> getCoordinates() {
         return coordinates;
     }
 }

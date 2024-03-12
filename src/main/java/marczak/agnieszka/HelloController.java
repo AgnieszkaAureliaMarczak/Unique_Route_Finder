@@ -40,25 +40,14 @@ public class HelloController {
         intermediate.add("15.834796414737399,51.73793284903263");
         intermediate.add("14.82069,52.44000");
         // end: intermediate.add("14.944330677563961,52.55699603953345");
+        
         System.out.println(apiKey);
         System.out.println(from);
         System.out.println(to);
 
         HttpHeaders headers = createHeaders();
-
-        // For GPX Directions:
-        /*OpenRouteRequest openRouteRequest = new OpenRouteRequest();
-        for (String coordinate : intermediate) {
-            openRouteRequest.addCoordinate(coordinate);
-        }*/
-
-        OpenRouteOptimization openRouteOptimization = addWaypoints(vehicle, intermediate);
-        HttpEntity<OpenRouteOptimization> entity = new HttpEntity<>(openRouteOptimization, headers);
-        //Jackson - serializuje jsony
-        //działa na zasadzie refleksji
-        RestTemplate restTemplate = new RestTemplate();
-        ResponseEntity<String> responseEntity = restTemplate.exchange(OPTIMIZATION_URL, HttpMethod.POST, entity, String.class);
-        String jsonResponse = responseEntity.getBody();
+        OpenRouteOptimization openRouteOptimization = addRouteWaypoints(vehicle, intermediate);
+        String jsonResponse = getOptimizedRoute(openRouteOptimization, headers);
 
         ObjectMapper objectMapper = new ObjectMapper(); // główny obiekt biblioteki object mapper - tak mozemy recznie budowac jsony
         List<Integer> jobIds = new ArrayList<>();
@@ -75,7 +64,23 @@ public class HelloController {
             e.printStackTrace();
         }
         System.out.println(jobIds);
-        return jsonResponse;
+
+
+
+        List<double[]> optimizedCoordinates = new ArrayList<>();
+        for (int id : jobIds) {
+            for (int i = 0; i < openRouteOptimization.getJobs().size(); i++) {
+                if (id == openRouteOptimization.getJobs().get(i).getId()) {
+                    optimizedCoordinates.add(openRouteOptimization.getJobs().get(i).getLocation());
+                }
+            }
+        }
+
+        OpenRouteDirectionsGPX openRouteDirectionsGPX = addRouteWaypoints(optimizedCoordinates);
+        HttpEntity<OpenRouteDirectionsGPX> entityGPX = new HttpEntity<>(openRouteDirectionsGPX, headers);
+        RestTemplate restTemplateGPX = new RestTemplate();
+        ResponseEntity<String> responseEntityGPX = restTemplateGPX.exchange(GPX_DIRECTIONS_URL, HttpMethod.POST, entityGPX, String.class);
+        return responseEntityGPX.getBody();
     }
 
     private double[] mapToCoordinates(String textCoordinates) {
@@ -90,12 +95,27 @@ public class HelloController {
         return headers;
     }
 
-    private OpenRouteOptimization addWaypoints(Vehicle vehicle, List<String> intermediate) {
+    private OpenRouteOptimization addRouteWaypoints(Vehicle vehicle, List<String> intermediate) {
         OpenRouteOptimization openRouteOptimization = new OpenRouteOptimization(vehicle);
         for (int i = 0; i < intermediate.size(); i++) {
             String coordinate = intermediate.get(i);
             openRouteOptimization.addWaypoint(new Job(i + 1, mapToCoordinates(coordinate)));
         }
         return openRouteOptimization;
+    }
+
+    private String getOptimizedRoute(OpenRouteOptimization openRouteOptimization, HttpHeaders headers){
+        HttpEntity<OpenRouteOptimization> entity = new HttpEntity<>(openRouteOptimization, headers);
+        RestTemplate restTemplate = new RestTemplate();
+        ResponseEntity<String> responseEntity = restTemplate.exchange(OPTIMIZATION_URL, HttpMethod.POST, entity, String.class);
+        return responseEntity.getBody();
+    }
+
+    private OpenRouteDirectionsGPX addRouteWaypoints(List<double[]> optimizedCoordinates){
+        OpenRouteDirectionsGPX openRouteDirectionsGPX = new OpenRouteDirectionsGPX();
+        for (double[] coordinate : optimizedCoordinates) {
+            openRouteDirectionsGPX.addCoordinate(coordinate);
+        }
+        return openRouteDirectionsGPX;
     }
 }
