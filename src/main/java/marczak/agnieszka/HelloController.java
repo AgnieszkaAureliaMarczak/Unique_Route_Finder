@@ -28,7 +28,7 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/api/v0/routes", method = RequestMethod.GET)
-    public void welcomeUser(String from, String to) {
+    public String welcomeUser(String from, String to) {
         Vehicle vehicle = new Vehicle(mapToCoordinates(from), mapToCoordinates(to));
         //algorytm
         List<String> intermediate = new ArrayList<>();
@@ -61,18 +61,21 @@ public class HelloController {
         String jsonResponse = responseEntity.getBody();
 
         ObjectMapper objectMapper = new ObjectMapper(); // główny obiekt biblioteki object mapper - tak mozemy recznie budowac jsony
+        List<Integer> jobIds = new ArrayList<>();
         try {
             JsonNode rootNode = objectMapper.readTree(jsonResponse);
-            JsonNode stepsNode = rootNode.path("routes").path("steps");
-            List<Integer> jobIds = new ArrayList<>();
+            JsonNode routeNode = rootNode.path("routes").get(0);
+            JsonNode stepsNode = routeNode.path("steps");
             for (JsonNode step : stepsNode) {
-                if (step.has("id")){
+                if (step.has("id")) {
                     jobIds.add(step.get("id").intValue());
                 }
             }
-        } catch (IOException e){
+        } catch (IOException e) {
             e.printStackTrace();
         }
+        System.out.println(jobIds);
+        return jsonResponse;
     }
 
     private double[] mapToCoordinates(String textCoordinates) {
@@ -80,14 +83,14 @@ public class HelloController {
         return new double[]{Double.parseDouble(coordinates[0]), Double.parseDouble(coordinates[1])};
     }
 
-    private HttpHeaders createHeaders(){
+    private HttpHeaders createHeaders() {
         HttpHeaders headers = new HttpHeaders();
         headers.add("Authorization", apiKey);
         headers.add("Content-Type", "application/json");
         return headers;
     }
 
-    private OpenRouteOptimization addWaypoints(Vehicle vehicle, List<String> intermediate){
+    private OpenRouteOptimization addWaypoints(Vehicle vehicle, List<String> intermediate) {
         OpenRouteOptimization openRouteOptimization = new OpenRouteOptimization(vehicle);
         for (int i = 0; i < intermediate.size(); i++) {
             String coordinate = intermediate.get(i);
