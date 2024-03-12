@@ -28,7 +28,7 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/api/v0/routes", method = RequestMethod.GET)
-    public String welcomeUser(String from, String to) {
+    public void welcomeUser(String from, String to) {
         Vehicle vehicle = new Vehicle(mapToCoordinates(from), mapToCoordinates(to));
         //algorytm
         List<String> intermediate = new ArrayList<>();
@@ -44,10 +44,7 @@ public class HelloController {
         System.out.println(from);
         System.out.println(to);
 
-        RestTemplate restTemplate = new RestTemplate();
-        HttpHeaders headers = new HttpHeaders();
-        headers.add("Authorization", apiKey);
-        headers.add("Content-Type", "application/json");
+        HttpHeaders headers = createHeaders();
 
         // For GPX Directions:
         /*OpenRouteRequest openRouteRequest = new OpenRouteRequest();
@@ -55,17 +52,14 @@ public class HelloController {
             openRouteRequest.addCoordinate(coordinate);
         }*/
 
-        OpenRouteOptimization openRouteOptimization = new OpenRouteOptimization(vehicle);
-        for (int i = 0; i < intermediate.size(); i++) {
-            String coordinate = intermediate.get(i);
-            openRouteOptimization.addWaypoint(new Job(i + 1, mapToCoordinates(coordinate)));
-        }
-
+        OpenRouteOptimization openRouteOptimization = addWaypoints(vehicle, intermediate);
         HttpEntity<OpenRouteOptimization> entity = new HttpEntity<>(openRouteOptimization, headers);
         //Jackson - serializuje jsony
         //działa na zasadzie refleksji
+        RestTemplate restTemplate = new RestTemplate();
         ResponseEntity<String> responseEntity = restTemplate.exchange(OPTIMIZATION_URL, HttpMethod.POST, entity, String.class);
         String jsonResponse = responseEntity.getBody();
+
         ObjectMapper objectMapper = new ObjectMapper(); // główny obiekt biblioteki object mapper - tak mozemy recznie budowac jsony
         try {
             JsonNode rootNode = objectMapper.readTree(jsonResponse);
@@ -79,7 +73,6 @@ public class HelloController {
         } catch (IOException e){
             e.printStackTrace();
         }
-        return null;
     }
 
     private double[] mapToCoordinates(String textCoordinates) {
@@ -87,4 +80,19 @@ public class HelloController {
         return new double[]{Double.parseDouble(coordinates[0]), Double.parseDouble(coordinates[1])};
     }
 
+    private HttpHeaders createHeaders(){
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Authorization", apiKey);
+        headers.add("Content-Type", "application/json");
+        return headers;
+    }
+
+    private OpenRouteOptimization addWaypoints(Vehicle vehicle, List<String> intermediate){
+        OpenRouteOptimization openRouteOptimization = new OpenRouteOptimization(vehicle);
+        for (int i = 0; i < intermediate.size(); i++) {
+            String coordinate = intermediate.get(i);
+            openRouteOptimization.addWaypoint(new Job(i + 1, mapToCoordinates(coordinate)));
+        }
+        return openRouteOptimization;
+    }
 }
