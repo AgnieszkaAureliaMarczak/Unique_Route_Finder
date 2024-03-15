@@ -2,19 +2,23 @@ package marczak.agnieszka;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sun.net.httpserver.Headers;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.servlet.function.ServerRequest;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 @RestController
@@ -29,7 +33,7 @@ public class HelloController {
     }
 
     @RequestMapping(path = "/api/v0/routes", method = RequestMethod.GET)
-    public String welcomeUser(String from, String to) {
+    public ResponseEntity<String> welcomeUser(String from, String to) {
         //algorytm
         List<String> intermediate = new ArrayList<>();
         // start: intermediate.add("15.6483688,51.9288503");
@@ -51,8 +55,17 @@ public class HelloController {
         String jsonResponse = getOptimizedRoute(openRouteOptimization, headers);
         List<Integer> jobIds = getOptimizedWaypointIds(jsonResponse);
         List<double[]> optimizedCoordinates = getOptimizedCoordinates(openRouteOptimization, jobIds);
+
+        optimizedCoordinates.add(0,vehicle.getStart());
+        optimizedCoordinates.add(vehicle.getEnd());
         OpenRouteDirectionsGPX openRouteDirectionsGPX = addRouteWaypoints(optimizedCoordinates);
-        return getGPXRoute(openRouteDirectionsGPX, headers);
+        String body = getGPXRoute(openRouteDirectionsGPX, headers);
+        HashMap<String, String> headersMap = new HashMap<>();
+        headersMap.put("Content-Type", "application/xml");
+
+        return ResponseEntity.status(200)
+                .headers(new HttpHeaders(CollectionUtils.toMultiValueMap(headers)) )
+                .body(body);
     }
 
     private double[] mapToCoordinates(String textCoordinates) {
@@ -117,6 +130,9 @@ public class HelloController {
                     optimizedCoordinates.add(openRouteOptimization.getJobs().get(i).getLocation());
                 }
             }
+        }
+        for (double[] optimizedCoordinate : optimizedCoordinates) {
+            System.out.println(Arrays.toString(optimizedCoordinate));
         }
         return optimizedCoordinates;
     }
